@@ -1,3 +1,5 @@
+# main.py
+
 from langchain_openai import ChatOpenAI
 import streamlit as st
 from dotenv import load_dotenv
@@ -9,9 +11,7 @@ import os
 
 load_dotenv()
 
-# Asegúrate de configurar tu clave API correctamente
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
-
 persist_directory = './chroma_db'
 
 def load_embeddings(persist_directory):
@@ -21,7 +21,6 @@ def load_embeddings(persist_directory):
 
 vectordb = load_embeddings(persist_directory)
 
-# Plantilla de prompt para el asistente
 prompt_template = """
 You are a helpful assistant with access to a database of reports and insights from Oakdene Hollins. Use the following context to help answer the question.
 
@@ -32,43 +31,53 @@ Question: {input}
 Answer:
 """
 
-# Usa ChatOpenAI con el modelo GPT-4
 llm = ChatOpenAI(model="gpt-4", max_tokens=1024, api_key=OPENAI_API_KEY)
 prompt = PromptTemplate(input_variables=["input", "context"], template=prompt_template)
-
-# Crear la cadena combinando el prompt y el modelo usando RunnableSequence
 qa_chain = RunnableSequence(first=prompt, last=llm)
 
-st.title("OAKDENE HOLLINS Help Assistant")
-st.write("Help Assistant based on Reports and Insights")
+def get_ai_response(messages):
+    context = ""
+    for msg in messages:
+        context += f"{msg['role']}: {msg['content']}\n"
+    
+    input_data = {"input": messages[-1]['content'], "context": context}
+    answer = qa_chain.invoke(input_data)
+    return answer if isinstance(answer, str) else answer.content
 
-def send_question():
-    question = st.session_state.get('question', '')
-    if question:
-        similar_results = vectordb.similarity_search(question, k=5)
-        context = ""
-        for doc in similar_results:
-            context += doc.page_content + "\n"
-        
-        # Crear el input para el modelo
-        input_data = {"input": question, "context": context}
-        
-        # Ejecutar la cadena
-        answer = qa_chain.invoke(input_data)
-        
-        # Extraer el texto de la respuesta
-        result = answer if isinstance(answer, str) else answer.content
-        st.write(result)
-    else:
-        st.write('Please, enter a question before sending.')
+def chat():
+    st.title("OAKDENE HOLLINS Help Assistant")
+    st.write("Help Assistant based on Reports and Insights")
+    
+    welcome_message = {"role": "assistant", "content": "I'm a helpful assistant with access to a database from Oakdene Hollins."}
+    
+    if 'messages' not in st.session_state:
+        st.session_state['messages'] = [welcome_message]
+    
+    def submit():
+        user_input = st.session_state.user_input.strip()
+        if user_input:  # Verifica que el mensaje no esté en blanco
+            st.session_state['messages'].append({'role': 'user', 'content': user_input})
+            
+            with st.spinner('Obteniendo respuesta...'):
+                ai_response = get_ai_response(st.session_state['messages'])
+                st.session_state['messages'].append({'role': 'assistant', 'content': ai_response})
+            # Limpiar el input después de enviar
+            st.session_state.user_input = ''
 
-# Crear un formulario para manejar el envío con la tecla Enter
-with st.form(key='question_form', clear_on_submit=True):
-    text_area_input = st.text_area("Ask your question", key='question')
-    submit_button = st.form_submit_button(label='Send')
+    # Mostrar los mensajes
+    if st.session_state['messages']:
+        for msg in st.session_state['messages']:
+            if msg['role'] == 'user':
+                st.markdown(f"<div style='padding: 10px; border-radius: 10px; margin: 10px 0; text-align: left;'><b><u>Tú</u></b><br>{msg['content']}</div>", unsafe_allow_html=True)  
+            else:
+                st.markdown(f"<div style='background-color: #4D4D4D; color: white; padding: 10px; border-radius: 10px; margin: 10px 0; text-align: left;'><b><u>Asistente</u></b><br>{msg['content']}</div>", unsafe_allow_html=True) 
 
-if submit_button:
-    send_question()
+    with st.form(key='chat_form', clear_on_submit=True):
+        st.text_input("Tu:", key='user_input')
+        st.form_submit_button(label='Enviar', on_click=submit)
 
-# Añadir el pie de página centrado
-st.markdown("<p style='text-align: right; color: gray'>App desarrollada por [Tu Nombre].</p>", unsafe_allow_html=True)
+    # Añadir el pie de página centrado
+    st.markdown("<p style='text-align: right; color: gray'>App desarrollada por Pablo Sánchez.</p>", unsafe_allow_html=True)
+
+if __name__ == '__main__':
+    chat()
