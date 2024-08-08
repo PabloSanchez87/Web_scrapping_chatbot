@@ -10,7 +10,6 @@ Este proyecto realiza scraping web para recolectar datos y los almacena en Chrom
 - **Web Scraping**: Recolecta datos de múltiples fuentes web utilizando técnicas de scraping.
 - **ChromaDB**: Almacena los datos recolectados en una base de datos eficiente y optimizada.
 - **Chatbot**: Utiliza los datos de ChromaDB para proporcionar respuestas informadas y contextuales a las consultas de los usuarios.
-- **Actualizaciones Automáticas**: Actualiza periódicamente la base de datos con nueva información obtenida de las fuentes web.
 
 ## Instalación
 
