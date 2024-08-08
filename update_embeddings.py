@@ -1,32 +1,37 @@
-from langchain_community.document_loaders import PyPDFLoader
-from langchain_openai import OpenAIEmbeddings
-from langchain_chroma import Chroma
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-import os
-import logging
-from dotenv import load_dotenv
-import time
+from langchain_community.document_loaders import PyPDFLoader  # Import PDF loader from LangChain community
+from langchain_openai import OpenAIEmbeddings  # Import OpenAI embeddings function from LangChain
+from langchain_chroma import Chroma  # Import Chroma for the vector database
+from langchain.text_splitter import RecursiveCharacterTextSplitter  # Import text splitter from LangChain
+import os  # Import OS module to interact with the operating system
+import logging  # Import logging module to capture logs
+from dotenv import load_dotenv  # Import function to load environment variables from a .env file
+import time  # Import time module to measure time taken
 
+# Load environment variables from a .env file
 load_dotenv()
 
-# Asegúrate de configurar tu clave API correctamente
+# Ensure to set your API key correctly
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
+# List of folder paths containing PDFs
 folders_paths = ['pdf_news_insights', 'pdf_reports']
+# Directory where the Chroma database will be stored
 persist_directory = './chroma_db'
 
-# Configurar el registro para capturar errores
+# Configure logging to capture errors and info messages
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Function to update embeddings
 def update_embeddings(folders_paths, persist_directory):
-    all_docs = []
+    all_docs = []  # List to hold all documents
 
-    # Listar todos los archivos PDF en las carpetas
+    # List all PDF files in the specified folders
     for folder_path in folders_paths:
         pdf_files = [f for f in os.listdir(folder_path) if f.endswith('.pdf')]
-        logger.info(f"Número de archivos PDF encontrados en {folder_path}: {len(pdf_files)}")
+        logger.info(f"Number of PDF files found in {folder_path}: {len(pdf_files)}")
 
+        # Load each PDF file
         for pdf_file in pdf_files:
             path_pdf = os.path.join(folder_path, pdf_file)
             try:
@@ -34,26 +39,28 @@ def update_embeddings(folders_paths, persist_directory):
                 docs = loader.load()
                 all_docs.extend(docs)
             except Exception as e:
-                logger.error(f"Error al cargar {path_pdf}: {e}")
+                logger.error(f"Error loading {path_pdf}: {e}")
 
-    logger.info(f"Número total de documentos cargados: {len(all_docs)}")
+    logger.info(f"Total number of documents loaded: {len(all_docs)}")
 
+    # If no documents are loaded, exit the function
     if not all_docs:
-        logger.info("No hay nuevos documentos para agregar.")
+        logger.info("No new documents to add.")
         return
 
+    # Split the documents into chunks
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=50)
     chunked_documents = text_splitter.split_documents(all_docs)
 
-    logger.info(f"Número total de fragmentos de documentos: {len(chunked_documents)}")
+    logger.info(f"Total number of document chunks: {len(chunked_documents)}")
 
-    # Crear los embeddings usando OpenAI
+    # Create embeddings using OpenAI
     embeddings = OpenAIEmbeddings(model='text-embedding-ada-002', api_key=OPENAI_API_KEY)
 
-    # Registrar el tiempo de inicio
+    # Record the start time for API calls
     start_time = time.time()
 
-    # Cargar la base de datos existente o crear una nueva si no existe
+    # Load the existing vector database or create a new one if it doesn't exist
     try:
         vectordb = Chroma(persist_directory=persist_directory, embedding_function=embeddings)
         vectordb.add_documents(chunked_documents)
@@ -63,12 +70,12 @@ def update_embeddings(folders_paths, persist_directory):
         else:
             raise e
 
-    # Registrar el tiempo total tomado para las llamadas a la API
+    # Record the total time taken for API calls
     end_time = time.time()
     total_time = end_time - start_time
 
-    logger.info(f"Tiempo total para añadir documentos a Chroma: {total_time} segundos")
-    logger.info("Proceso de actualización de embeddings completado con éxito.")
+    logger.info(f"Total time to add documents to Chroma: {total_time} seconds")
+    logger.info("Embedding update process completed successfully.")
 
-# Ejecutar la función para actualizar los embeddings
+# Execute the function to update embeddings
 update_embeddings(folders_paths, persist_directory)

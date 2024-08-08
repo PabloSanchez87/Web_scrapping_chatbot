@@ -1,26 +1,26 @@
-import os
-import requests
-from lxml import etree
-import re
-from urllib.parse import urljoin
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
-import time
-import random
-from bs4 import BeautifulSoup
-from dotenv import load_dotenv
+import os  # Import the OS module to interact with the operating system
+import requests  # Import requests module for making HTTP requests
+from lxml import etree  # Import lxml for XML parsing
+import re  # Import the regular expression module for string manipulation
+from urllib.parse import urljoin  # Import urljoin for URL parsing and joining
+from requests.adapters import HTTPAdapter  # Import HTTPAdapter for configuring HTTP sessions
+from urllib3.util.retry import Retry  # Import Retry for handling retries in HTTP requests
+import time  # Import time module to handle delays
+import random  # Import random module for generating random numbers
+from bs4 import BeautifulSoup  # Import BeautifulSoup for parsing HTML
+from dotenv import load_dotenv  # Import function to load environment variables from a .env file
 
-
+# Load environment variables from a .env file
 load_dotenv()
 
-# Configuración
-sitemap_file_path = 'sitemap.xml'
-domain = os.getenv('URL_DOMAIN')
-output_dir = "pdf_reports"
-error_log_path = 'errores.txt'
-os.makedirs(output_dir, exist_ok=True)
+# Configuration
+sitemap_file_path = 'sitemap.xml'  # Path to the sitemap file
+domain = os.getenv('URL_DOMAIN')  # Get the domain URL from environment variables
+output_dir = "pdf_reports"  # Directory to save the PDFs
+error_log_path = 'errores.txt'  # Path to the error log file
+os.makedirs(output_dir, exist_ok=True)  # Create the output directory if it doesn't exist
 
-# Lista de User-Agents para rotación
+# List of User-Agents for rotation
 user_agents = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0",
@@ -28,58 +28,64 @@ user_agents = [
     "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:89.0) Gecko/20100101 Firefox/89.0"
 ]
 
-# Función para limpiar el contenido del XML
+# Function to clean the XML content
 def clean_xml_content(content):
-    # Eliminar cualquier referencia de entidad no válida
+    # Remove any invalid entity references
     content = re.sub(r'&(?!(amp|lt|gt|quot|apos);)', '&amp;', content)
     return content
 
-# Función para extraer URLs del sitemap
+# Function to extract URLs from the sitemap
 def get_filtered_sitemap_urls(file_path):
     try:
         cleaned_content = ""
+        # Read the sitemap file
         with open(file_path, 'r', encoding='utf-8') as file:
             for line in file:
                 if line.strip().startswith("<"):
                     cleaned_content += line
         
+        # Clean the XML content
         cleaned_content = clean_xml_content(cleaned_content)
         
-        print(f"Contenido del archivo sitemap (limpio):\n{cleaned_content[:500]}...")  # Imprimir los primeros 500 caracteres del archivo limpio
+        # Print the first 500 characters of the cleaned sitemap content
+        print(f"Cleaned sitemap file content:\n{cleaned_content[:500]}...")
         
-        # Parsear el contenido con lxml
+        # Parse the cleaned content with lxml
         root = etree.fromstring(cleaned_content.encode('utf-8'))
         
-        # Definir el espacio de nombres
+        # Define the XML namespaces
         namespaces = {
             'ns': 'http://www.sitemaps.org/schemas/sitemap/0.9',
             'image': 'http://www.google.com/schemas/sitemap-image/1.1',
             'xhtml': 'http://www.w3.org/1999/xhtml'
         }
         
-        # Buscar las etiquetas <loc> con el espacio de nombres
+        # Find <loc> tags within the specified namespace
         loc_tags = root.xpath('//ns:loc', namespaces=namespaces)
-        print(f"Número de etiquetas <loc> encontradas: {len(loc_tags)}")
+        print(f"Number of <loc> tags found: {len(loc_tags)}")
         
+        # Filter URLs containing '/reports/'
         urls = [loc.text for loc in loc_tags if '/reports/' in loc.text]
-        print(f"URLs extraídas y filtradas del sitemap: {len(urls)}")
+        print(f"Filtered URLs extracted from sitemap: {len(urls)}")
         return urls
     except Exception as e:
-        print(f"Error al leer el sitemap: {e}")
+        print(f"Error reading the sitemap: {e}")
         return []
 
-# Función para descargar PDF con verificación SSL
+# Function to download PDF with SSL verification
 def download_pdf(url, output_path):
     try:
+        # Configure the HTTP session with retries
         session = requests.Session()
         retries = Retry(total=5, backoff_factor=1, status_forcelist=[502, 503, 504])
         session.mount('https://', HTTPAdapter(max_retries=retries))
         headers = {'User-Agent': random.choice(user_agents)}
         response = session.get(url, headers=headers, verify=True)
         if response.status_code == 200:
+            # Write the PDF content to a file
             with open(output_path, 'wb') as f:
                 f.write(response.content)
-            print(f"PDF descargado: {output_path}")
+            print(f"Downloaded PDF: {output_path}")
         else:
             log_error(url, f"Status Code: {response.status_code}")
     except requests.exceptions.RequestException as e:
@@ -87,13 +93,13 @@ def download_pdf(url, output_path):
     except requests.exceptions.SSLError as ssl_e:
         log_error(url, f"SSL Error: {ssl_e}")
 
-# Función para registrar errores
+# Function to log errors
 def log_error(url, error_message):
     with open(error_log_path, 'a') as f:
         f.write(f"{url}: {error_message}\n")
-    print(f"Error registrado: {url} - {error_message}")
+    print(f"Logged error: {url} - {error_message}")
 
-# Función para hacer scraping y descargar PDFs
+# Function to scrape and download PDFs from a page
 def scrape_and_download_pdfs(page_url):
     try:
         headers = {'User-Agent': random.choice(user_agents)}
@@ -102,7 +108,7 @@ def scrape_and_download_pdfs(page_url):
             soup = BeautifulSoup(response.content, 'html.parser')
             pdf_links = soup.find_all('a', href=True)
             if not pdf_links:
-                log_error(page_url, "No se encontraron enlaces a PDFs")
+                log_error(page_url, "No PDF links found")
             for link in pdf_links:
                 href = link['href']
                 if href.endswith('.pdf'):
@@ -115,13 +121,14 @@ def scrape_and_download_pdfs(page_url):
     except requests.exceptions.RequestException as e:
         log_error(page_url, str(e))
 
-# Obtener todas las URLs del sitemap
+# Get all the URLs from the sitemap
 filtered_sitemap_urls = get_filtered_sitemap_urls(sitemap_file_path)
 
-print(f"URLs extraídas del sitemap: {len(filtered_sitemap_urls)}")
+print(f"Extracted URLs from sitemap: {len(filtered_sitemap_urls)}")
 
-# Procesar cada URL y descargar los PDFs
+# Process each URL and download the PDFs
 for url in filtered_sitemap_urls:
-    print(f"Procesando URL: {url}")
+    print(f"Processing URL: {url}")
     scrape_and_download_pdfs(url)
-    time.sleep(random.uniform(3, 7))  # Introduce un retardo aleatorio mayor entre 3 y 7 segundos
+    # Introduce a random delay between 3 and 7 seconds
+    time.sleep(random.uniform(3, 7))
