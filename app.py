@@ -1,5 +1,9 @@
 # main.py
 
+import sys
+import pysqlite3
+sys.modules['sqlite3'] = pysqlite3
+
 from langchain_openai.chat_models import ChatOpenAI
 import streamlit as st
 from dotenv import load_dotenv
