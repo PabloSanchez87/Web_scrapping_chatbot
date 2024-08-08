@@ -92,7 +92,7 @@ def chat():
     if st.session_state['messages']:
         for msg in st.session_state['messages']:
             if msg['role'] == 'user':
-                st.markdown(f"<div style='padding: 10px; border-radius: 10px; margin: 10px 0; text-align: left;'><b><u>Tú</u></b><br>{msg['content']}</div>", unsafe_allow_html=True)  
+                st.markdown(f"<div style='padding: 10px; border-radius: 10px; margin: 10px 0; text-align: left;'><b><u>You</u></b><br>{msg['content']}</div>", unsafe_allow_html=True)  
             else:
                 st.markdown(f"<div style='background-color: #4D4D4D; color: white; padding: 10px; border-radius: 10px; margin: 10px 0; text-align: left;'><b><u>Assistant</u></b><br>{msg['content']}</div>", unsafe_allow_html=True) 
 
