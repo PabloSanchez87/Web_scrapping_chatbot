@@ -1,6 +1,6 @@
 # main.py
 
-from langchain_openai import ChatOpenAI
+from langchain_openai.chat_models import ChatOpenAI
 import streamlit as st
 from dotenv import load_dotenv
 from langchain_openai import OpenAIEmbeddings
