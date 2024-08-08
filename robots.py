@@ -1,4 +1,9 @@
 import requests
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
 
 def check_robots_txt(url):
     robots_url = f"{url}/robots.txt"
@@ -9,4 +14,5 @@ def check_robots_txt(url):
         print("No se pudo acceder al archivo robots.txt")
 
 # Verifica el archivo robots.txt del dominio
-check_robots_txt("https://www.oakdenehollins.com")
+domain = os.getenv('URL_DOMAIN')
+check_robots_txt(domain)

@@ -8,10 +8,14 @@ from urllib3.util.retry import Retry
 import time
 import random
 from bs4 import BeautifulSoup
+from dotenv import load_dotenv
+
+
+load_dotenv()
 
 # Configuración
 sitemap_file_path = 'sitemap.xml'
-domain = "https://www.oakdenehollins.com"
+domain = os.getenv('URL_DOMAIN')
 output_dir = "pdf_reports"
 error_log_path = 'errores.txt'
 os.makedirs(output_dir, exist_ok=True)

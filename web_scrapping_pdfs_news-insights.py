@@ -6,6 +6,7 @@ from lxml import etree
 import time
 import random
 
+
 # Configuración
 sitemap_file_path = 'sitemap.xml'
 output_dir_pdfs = "pdf_news_insights"
