@@ -1,9 +1,8 @@
 .env
 pdf_reports
 pdf_news_insights
-web/
-web
 sitemap.xml
 errores.txt
 log.txt
 chroma_db
+chroma_db/
